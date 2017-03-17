@@ -1,4 +1,4 @@
-import { Request, Response } from 'servie'
+import { Request, Response, Headers } from 'servie'
 import { IncomingMessage, ServerResponse } from 'http'
 import { TLSSocket } from 'tls'
 import { finalhandler } from 'servie-finalhandler'
@@ -11,6 +11,9 @@ export interface Options {
   logError?: (err: any) => void
 }
 
+/**
+ * Create a node.js-compatible http handler.
+ */
 export function createHandler (app: App, options: Options = {}) {
   return function (request: IncomingMessage, response: ServerResponse): void {
     let responded = false
@@ -55,14 +58,20 @@ export function createHandler (app: App, options: Options = {}) {
       }
 
       if (res.bodyBuffered) {
+        response.addTrailers(toTrailers(res.trailers))
         response.end(res.body)
       } else {
-        res.stream().pipe(response).on('error', (err: Error) => sendError(err))
+        const stream = res.stream()
+
+        stream.on('error', sendError)
+        stream.on('end', () => response.addTrailers(toTrailers(res.trailers)))
+
+        stream.pipe(response)
       }
     }
 
     // Handle request and response errors.
-    req.events.on('error', (err: Error) => sendError(err))
+    req.events.on('error', sendError)
     req.events.on('abort', () => sendResponse(new Response({ status: 444 })))
 
     req.started = true
@@ -73,4 +82,17 @@ export function createHandler (app: App, options: Options = {}) {
         (err) => sendError(err)
       )
   }
+}
+
+/**
+ * Convert the trailers object into a list of trailers for node.js.
+ */
+function toTrailers (trailers: Headers): any {
+  const result: [string, string][] = new Array(trailers.raw.length / 2)
+
+  for (let i = 0; i < trailers.raw.length; i += 2) {
+    result[i / 2] = [trailers.raw[i], trailers.raw[i + 1]]
+  }
+
+  return result
 }
