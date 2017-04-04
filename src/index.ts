@@ -15,7 +15,7 @@ export interface Options {
  * Create a node.js-compatible http handler.
  */
 export function createHandler (app: App, options: Options = {}) {
-  return function (request: IncomingMessage, response: ServerResponse): void {
+  return function (request: IncomingMessage, response: ServerResponse): Promise<void> {
     let responded = false
 
     const req = new Request({
@@ -76,7 +76,7 @@ export function createHandler (app: App, options: Options = {}) {
 
     req.started = true
 
-    app(req, finalhandler(req))
+    return Promise.resolve(app(req, finalhandler(req)))
       .then(
         (res) => sendResponse(res),
         (err) => sendError(err)
