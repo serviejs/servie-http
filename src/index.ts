@@ -53,8 +53,12 @@ export function createHandler (app: App, options: Options = {}) {
       response.statusCode = res.status || 200
       response.statusMessage = res.statusText!
 
-      for (let i = 0; i < res.headers.raw.length; i += 2) {
-        response.setHeader(res.headers.raw[i], res.headers.raw[i + 1])
+      if (res.headers.raw.length) {
+        const headers = res.headers.object(true)
+
+        for (const key of Object.keys(headers)) {
+          response.setHeader(key, headers[key])
+        }
       }
 
       if (res.bodyBuffered) {
