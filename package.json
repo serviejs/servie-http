@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/blakeembrey/node-servie-http.git"
+    "url": "git://github.com/serviejs/servie-http.git"
   },
   "keywords": [
     "servie",
@@ -32,9 +32,9 @@
   },
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/blakeembrey/node-servie-http/issues"
+    "url": "https://github.com/serviejs/servie-http/issues"
   },
-  "homepage": "https://github.com/blakeembrey/node-servie-http",
+  "homepage": "https://github.com/serviejs/servie-http",
   "jest": {
     "testEnvironment": "node",
     "transform": {

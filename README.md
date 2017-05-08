@@ -1,9 +1,9 @@
 # Servie Http
 
-[![NPM version][npm-image]][npm-url]
-[![NPM downloads][downloads-image]][downloads-url]
-[![Build status][travis-image]][travis-url]
-[![Test coverage][coveralls-image]][coveralls-url]
+[![NPM version](https://img.shields.io/npm/v/servie-http.svg?style=flat)](https://npmjs.org/package/servie-http)
+[![NPM downloads](https://img.shields.io/npm/dm/servie-http.svg?style=flat)](https://npmjs.org/package/servie-http)
+[![Build status](https://img.shields.io/travis/serviejs/servie-http.svg?style=flat)](https://travis-ci.org/serviejs/servie-http)
+[![Test coverage](https://img.shields.io/coveralls/serviejs/servie-http.svg?style=flat)](https://coveralls.io/r/serviejs/servie-http?branch=master)
 
 > Servie transport for HTTP(s).
 
@@ -34,12 +34,3 @@ This project is written using [TypeScript](https://github.com/Microsoft/TypeScri
 ## License
 
 Apache 2.0
-
-[npm-image]: https://img.shields.io/npm/v/servie-http.svg?style=flat
-[npm-url]: https://npmjs.org/package/servie-http
-[downloads-image]: https://img.shields.io/npm/dm/servie-http.svg?style=flat
-[downloads-url]: https://npmjs.org/package/servie-http
-[travis-image]: https://img.shields.io/travis/blakeembrey/node-servie-http.svg?style=flat
-[travis-url]: https://travis-ci.org/blakeembrey/node-servie-http
-[coveralls-image]: https://img.shields.io/coveralls/blakeembrey/node-servie-http.svg?style=flat
-[coveralls-url]: https://coveralls.io/r/blakeembrey/node-servie-http?branch=master
