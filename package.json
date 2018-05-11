@@ -8,7 +8,7 @@
     "dist/"
   ],
   "scripts": {
-    "lint": "tslint \"src/**/*.ts\"",
+    "lint": "tslint \"src/**/*.ts\" --project tsconfig.json",
     "build": "rimraf dist && tsc",
     "specs": "jest --coverage",
     "test": "npm run -s lint && npm run -s build && npm run -s specs",
@@ -48,25 +48,29 @@
     ]
   },
   "devDependencies": {
-    "autocannon": "^0.16.1",
+    "@types/jest": "^22.2.3",
+    "@types/node": "^10.0.8",
+    "autocannon": "^2.4.0",
     "express": "^4.15.2",
-    "jest": "^19.0.0",
+    "jest": "^22.4.3",
     "parseurl": "^1.3.1",
     "rimraf": "^2.5.4",
-    "servie": "^0.2.2",
-    "servie-route": "^0.3.1",
+    "servie": "^3.0.0",
+    "servie-route": "^1.0.0",
     "throwback": "^2.0.0",
-    "ts-jest": "^19.0.0",
-    "tslint": "^5.0.0",
-    "tslint-config-standard": "^5.0.2",
-    "typescript": "^2.2.1",
+    "ts-jest": "^22.4.5",
+    "tslint": "^5.10.0",
+    "tslint-config-standard": "^7.0.0",
+    "typescript": "^2.8.3",
     "typings": "^2.1.0"
   },
   "peerDependencies": {
-    "servie": "^0.2.2"
+    "servie": "^3.0.0"
   },
   "dependencies": {
-    "servie-errorhandler": "^0.1.0",
-    "servie-finalhandler": "^0.1.0"
+    "@types/pump": "^1.0.1",
+    "pump": "^3.0.0",
+    "servie-errorhandler": "^1.2.0",
+    "servie-finalhandler": "^1.1.0"
   }
 }

@@ -1,4 +1,5 @@
-import { Response } from 'servie'
+import { Response, createHeaders } from 'servie'
+import { createBody } from 'servie/dist/body/node'
 import { get } from 'servie-route'
 import { compose } from 'throwback'
 import { createReadStream } from 'fs'
@@ -9,27 +10,29 @@ import { createHandler } from './index'
 describe('servie-http', () => {
   const handler = createHandler(compose([
     get('/', () => {
-      return new Response({ body: 'hello world' })
+      return new Response({ body: createBody('hello world') })
     }),
     get('/stream', () => {
       return new Response({
-        body: createReadStream(join(__dirname, 'index.ts')),
-        headers: {
+        body: createBody(createReadStream(join(__dirname, 'index.ts'))),
+        headers: createHeaders({
           'Trailer': 'Server-Timing'
-        },
-        trailers: {
+        }),
+        trailer: createHeaders({
           'Server-Timing': 'end=100'
-        }
+        })
       })
     })
   ]))
 
   const server = http.createServer(handler).listen(0)
+  const address = server.address()
+  const url = typeof address === 'string' ? address : `http://localhost:${address.port}`
 
   afterAll(() => server.close())
 
   it('should work over http', (done) => {
-    return http.get(`http://localhost:${server.address().port}`, (res) => {
+    return http.get(url, (res) => {
       let data = ''
 
       res.on('data', (chunk: Buffer) => data += chunk.toString('utf8'))
@@ -45,7 +48,7 @@ describe('servie-http', () => {
   })
 
   it('should send trailers', (done) => {
-    return http.get(`http://localhost:${server.address().port}/stream`, (res) => {
+    return http.get(`${url}/stream`, (res) => {
       res.resume()
 
       res.on('end', () => {

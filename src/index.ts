@@ -1,4 +1,6 @@
-import { Request, Response, Headers } from 'servie'
+import pump = require('pump')
+import { Request, Response, Headers, createHeaders } from 'servie'
+import { createBody, Body } from 'servie/dist/body/node'
 import { IncomingMessage, ServerResponse } from 'http'
 import { TLSSocket } from 'tls'
 import { finalhandler } from 'servie-finalhandler'
@@ -16,7 +18,7 @@ export interface Options {
  */
 export function createHandler (app: App, options: Options = {}) {
   return function (request: IncomingMessage, response: ServerResponse): Promise<void> {
-    let responded = false
+    let hasResponded = false
 
     const req = new Request({
       connection: {
@@ -24,12 +26,12 @@ export function createHandler (app: App, options: Options = {}) {
         localPort: request.socket.localPort,
         remoteAddress: request.socket.remoteAddress,
         remotePort: request.socket.remotePort,
-        encrypted: (request.socket as TLSSocket).encrypted
+        encrypted: !!(request.socket as TLSSocket).encrypted
       },
       method: request.method,
       url: request.url!,
-      body: request,
-      headers: request.rawHeaders
+      body: createBody(request),
+      headers: createHeaders(request.rawHeaders)
     })
 
     const mapError = errorhandler(req, {
@@ -41,42 +43,39 @@ export function createHandler (app: App, options: Options = {}) {
       return sendResponse(mapError(err))
     }
 
-    function sendResponse (res: Response) {
-      if (responded) {
-        return
-      }
+    function sendResponse (res: Response): void {
+      if (hasResponded) return
 
-      responded = true
+      hasResponded = true
       res.started = true
       req.events.emit('response', res)
 
-      response.statusCode = res.status || 200
-      response.statusMessage = res.statusText!
+      if (res.statusCode) response.statusCode = res.statusCode
+      if (res.statusMessage) response.statusMessage = res.statusMessage
 
-      if (res.headers.raw.length) {
-        const headers = res.headers.object(true)
+      const headers = res.allHeaders.asObject(false)
 
-        for (const key of Object.keys(headers)) {
-          response.setHeader(key, headers[key])
-        }
+      for (const key of Object.keys(headers)) {
+        response.setHeader(key, headers[key])
       }
 
-      if (res.bodyBuffered) {
-        response.addTrailers(toTrailers(res.trailers))
-        response.end(res.body)
-      } else {
-        const stream = res.stream()
-
-        stream.on('error', sendError)
-        stream.on('end', () => response.addTrailers(toTrailers(res.trailers)))
-
-        stream.pipe(response)
+      if (!(res.body instanceof Body)) {
+        throw new TypeError('Transport only supports node.js bodies')
       }
+
+      Promise.all([
+        res.trailer.then(trailer => {
+          if (trailer.rawHeaders.length) response.addTrailers(toTrailers(trailer))
+        }),
+        res.body.buffered
+          ? res.body.buffer().then(buffer => { res.finished = true; response.end(buffer) })
+          : Promise.resolve(void pump(res.body.stream(), response, () => { res.finished = true }))
+      ]).catch(sendError)
     }
 
     // Handle request and response errors.
     req.events.on('error', sendError)
-    req.events.on('abort', () => sendResponse(new Response({ status: 444 })))
+    req.events.on('abort', () => sendResponse(new Response({ statusCode: 444 })))
 
     req.started = true
 
@@ -92,10 +91,10 @@ export function createHandler (app: App, options: Options = {}) {
  * Convert the trailers object into a list of trailers for node.js.
  */
 function toTrailers (trailers: Headers): any {
-  const result: [string, string][] = new Array(trailers.raw.length / 2)
+  const result: [string, string][] = new Array(trailers.rawHeaders.length / 2)
 
-  for (let i = 0; i < trailers.raw.length; i += 2) {
-    result[i / 2] = [trailers.raw[i], trailers.raw[i + 1]]
+  for (let i = 0; i < trailers.rawHeaders.length; i += 2) {
+    result[i / 2] = [trailers.rawHeaders[i], trailers.rawHeaders[i + 1]]
   }
 
   return result

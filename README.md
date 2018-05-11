@@ -21,7 +21,7 @@ import { createHandler } from 'servie-http'
 import { get } from 'servie-route'
 
 const handler = createHandler(get('/test', (req) => {
-  return new Response({ body: 'hello world' }))
+  return new Response({ statusCode: 200 }))
 })
 
 createServer(handler).listen(3000)
