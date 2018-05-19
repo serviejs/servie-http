@@ -7,6 +7,11 @@ import { finalhandler } from 'servie-finalhandler'
 import { errorhandler } from 'servie-errorhandler'
 
 /**
+ * Export node.js body methods.
+ */
+export { createBody, Body }
+
+/**
  * Node.js HTTP request options.
  */
 export interface HttpRequestOptions extends RequestOptions {
