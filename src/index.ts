@@ -1,13 +1,40 @@
 import pump = require('pump')
-import { Request, Response, Headers, createHeaders } from 'servie'
+import { Request, Response, Headers, createHeaders, RequestOptions } from 'servie'
 import { createBody, Body } from 'servie/dist/body/node'
 import { IncomingMessage, ServerResponse } from 'http'
 import { TLSSocket } from 'tls'
 import { finalhandler } from 'servie-finalhandler'
 import { errorhandler } from 'servie-errorhandler'
 
-export type App = (req: Request, next: () => Promise<Response>) => Promise<Response>
+/**
+ * Node.js HTTP request options.
+ */
+export interface HttpRequestOptions extends RequestOptions {
+  body?: Body
+}
 
+/**
+ * Node.js HTTP request class.
+ */
+export class HttpRequest extends Request {
+
+  body: Body
+
+  constructor (options: HttpRequestOptions) {
+    super(options)
+    this.body = options.body || createBody()
+  }
+
+}
+
+/**
+ * HTTP server application signature.
+ */
+export type App = (req: HttpRequest, next: () => Promise<Response>) => Promise<Response>
+
+/**
+ * HTTP server options.
+ */
 export interface Options {
   production?: boolean
   logError?: (err: any) => void
@@ -20,7 +47,7 @@ export function createHandler (app: App, options: Options = {}) {
   return function (request: IncomingMessage, response: ServerResponse): Promise<void> {
     let hasResponded = false
 
-    const req = new Request({
+    const req = new HttpRequest({
       connection: {
         localAddress: request.socket.localAddress,
         localPort: request.socket.localPort,
@@ -29,7 +56,7 @@ export function createHandler (app: App, options: Options = {}) {
         encrypted: !!(request.socket as TLSSocket).encrypted
       },
       method: request.method,
-      url: request.url!,
+      url: request.url || '/',
       body: createBody(request),
       headers: createHeaders(request.rawHeaders)
     })
@@ -60,7 +87,7 @@ export function createHandler (app: App, options: Options = {}) {
       }
 
       if (!(res.body instanceof Body)) {
-        throw new TypeError('Transport only supports node.js bodies')
+        throw new TypeError('HTTP transport only supports node.js bodies')
       }
 
       Promise.all([
