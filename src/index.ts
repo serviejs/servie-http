@@ -1,5 +1,5 @@
 import pump = require('pump')
-import { Request, Response, Headers, createHeaders, RequestOptions } from 'servie'
+import { Request, Response, Headers, createHeaders, RequestOptions, BodyCommon } from 'servie'
 import { createBody, Body } from 'servie/dist/body/node'
 import { IncomingMessage, ServerResponse } from 'http'
 import { TLSSocket } from 'tls'
@@ -91,17 +91,19 @@ export function createHandler (app: App, options: Options = {}) {
         response.setHeader(key, headers[key])
       }
 
-      if (!(res.body instanceof Body)) {
-        throw new TypeError('HTTP transport only supports node.js bodies')
+      const { body } = res
+
+      if (!isNodeBody(body)) {
+        return sendError(new TypeError('HTTP transport only supports node.js bodies'))
       }
 
       Promise.all([
         res.trailer.then(trailer => {
           if (trailer.rawHeaders.length) response.addTrailers(toTrailers(trailer))
         }),
-        res.body.buffered
-          ? res.body.buffer().then(buffer => { res.finished = true; response.end(buffer) })
-          : Promise.resolve(void pump(res.body.stream(), response, () => { res.finished = true }))
+        body.buffered
+          ? body.buffer().then(buffer => { res.finished = true; response.end(buffer) })
+          : Promise.resolve(void pump(body.stream(), response, () => { res.finished = true }))
       ]).catch(sendError)
     }
 
@@ -130,4 +132,11 @@ function toTrailers (trailers: Headers): any {
   }
 
   return result
+}
+
+/**
+ * Check if body object looks like node.js.
+ */
+function isNodeBody (body: any): body is Body {
+  return typeof body.buffer === 'function' && typeof body.stream === 'function'
 }

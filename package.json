@@ -38,7 +38,7 @@
   "jest": {
     "testEnvironment": "node",
     "transform": {
-      ".(ts|tsx)": "ts-jest/preprocessor.js"
+      ".(ts|tsx)": "<rootDir>/node_modules/ts-jest/preprocessor.js"
     },
     "testRegex": "src/.*\\.(?:test|spec)\\.(ts|tsx|js)$",
     "moduleFileExtensions": [
