@@ -12,7 +12,10 @@
     "build": "rimraf dist && tsc",
     "specs": "jest --coverage",
     "test": "npm run -s lint && npm run -s build && npm run -s specs",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "bench:servie": "autocannon --on-port=4000 / -- node benchmarks/servie.js",
+    "bench:http": "autocannon --on-port=4000 / -- node benchmarks/http.js",
+    "bench:express": "autocannon --on-port=4000 / -- node benchmarks/express.js"
   },
   "repository": {
     "type": "git",
