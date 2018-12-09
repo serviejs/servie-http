@@ -27,6 +27,14 @@ const handler = createHandler(get('/test', (req) => {
 createServer(handler).listen(3000)
 ```
 
+### CLI
+
+```
+servie-http -f index.js -p 4000
+
+servie-http --help
+```
+
 ## TypeScript
 
 This project is written using [TypeScript](https://github.com/Microsoft/TypeScript) and publishes the definitions directly to NPM.
