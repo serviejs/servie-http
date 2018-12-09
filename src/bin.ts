@@ -17,8 +17,6 @@ const args = arg({
   '-k': '--key'
 })
 
-console.log(args)
-
 const {
   '--port': port = process.env.PORT || 3000,
   '--help': help,
@@ -34,8 +32,8 @@ if (help) {
       $ servie-http -p <port> -f <script.js> -k default
     Options
       --file, -f    A file to resolve exporting an app and serve over HTTP
-      --export, -e  The key of "--file" to use as the application
-      --port, -p    A port number on which to start the application
+      --key, -k     A property of "--file" with the application (${JSON.stringify(key)})
+      --port, -p    A port number on which to start the application (${port})
   `)
 
   process.exit(0)
@@ -43,6 +41,11 @@ if (help) {
 
 const pkg = require(join(process.cwd(), file))
 const main = key ? pkg[key] : (pkg.__esModule ? pkg.default : pkg)
+
+if (typeof main !== 'function') {
+  throw new TypeError(`Invalid "main" function exported: ${JSON.stringify(key)}`)
+}
+
 const handler = createHandler(main)
 
 createServer(handler).listen(port, () => {
