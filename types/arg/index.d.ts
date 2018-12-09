@@ -7,7 +7,7 @@ declare namespace arg {
     [key: string]: string | Handler | [Handler]
   }
 
-  export type Result <T extends Spec> = {
+  export type Result <T extends Spec> = { _: string[] } & {
     [K in keyof T]: T[K] extends string
       ? never : T[K] extends Handler
       ? ReturnType<T[K]> : T[K] extends [Handler]
