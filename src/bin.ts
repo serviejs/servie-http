@@ -10,17 +10,20 @@ const args = arg({
   '--file': String,
   '--port': Number,
   '--key': String,
+  '--hostname': String,
 
   '-h': '--help',
   '-f': '--file',
   '-p': '--port',
+  '-H': '--hostname',
   '-k': '--key'
 })
 
 const {
-  '--port': port = process.env.PORT || 3000,
+  '--port': port = Number(process.env.PORT) || 3000,
   '--help': help,
   '--file': file,
+  '--hostname': hostname = '0.0.0.0',
   '--key': key = ''
 } = args
 
@@ -31,9 +34,10 @@ if (help) {
     Usage
       $ servie-http -p <port> -f <script.js> -k default
     Options
-      --file, -f    A file to resolve exporting an app and serve over HTTP
-      --key, -k     A property of "--file" with the application (${JSON.stringify(key)})
-      --port, -p    A port number on which to start the application (${port})
+      --file, -f      The file to resolve which exports an app to serve over HTTP
+      --port, -p      The port number on which to start the application (${port})
+      --hostname, -H  The hostname on which to start the application (${hostname})
+      --key, -k       The property of "--file" exporting the application (${JSON.stringify(key)})
   `)
 
   process.exit(0)
@@ -46,8 +50,10 @@ if (typeof main !== 'function') {
   throw new TypeError(`Invalid "main" function exported: ${JSON.stringify(key)}`)
 }
 
-const handler = createHandler(main)
+const app = createHandler(main)
 
-createServer(handler).listen(port, () => {
+createServer(app).listen(port, hostname, (err: Error | null) => {
+  if (err) throw err
+
   console.log(`Server running on http://localhost:${port}`)
 })
