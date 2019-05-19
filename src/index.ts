@@ -1,142 +1,118 @@
-import pump = require('pump')
-import { Request, Response, Headers, createHeaders, RequestOptions, BodyCommon } from 'servie'
-import { createBody, Body } from 'servie/dist/body/node'
-import { IncomingMessage, ServerResponse } from 'http'
-import { TLSSocket } from 'tls'
-import { finalhandler } from 'servie-finalhandler'
-import { errorhandler } from 'servie-errorhandler'
-
-/**
- * Export node.js body methods.
- */
-export { createBody, Body }
+import pump = require("pump");
+import { Request, Response, RequestOptions } from "servie/dist/node";
+import { useRawBody } from "servie/dist/common";
+import { IncomingMessage, ServerResponse } from "http";
+import { finalhandler } from "servie-finalhandler";
+import { errorhandler } from "servie-errorhandler";
 
 /**
  * Node.js HTTP request options.
  */
 export interface HttpRequestOptions extends RequestOptions {
-  body?: Body
+  request: IncomingMessage;
 }
 
 /**
  * Node.js HTTP request class.
  */
 export class HttpRequest extends Request {
+  request: IncomingMessage;
 
-  body: Body
-
-  constructor (options: HttpRequestOptions) {
-    super(options)
-    this.body = options.body || createBody()
+  constructor(input: string | Request, options: HttpRequestOptions) {
+    super(input, options);
+    this.request = options.request;
   }
-
 }
 
 /**
  * HTTP server application signature.
  */
-export type App = (req: HttpRequest, next: () => Promise<Response>) => Promise<Response>
+export type App = (
+  req: HttpRequest,
+  next: () => Promise<Response>
+) => Promise<Response>;
 
 /**
  * HTTP server options.
  */
 export interface Options {
-  production?: boolean
-  logError?: (err: any) => void
+  production?: boolean;
+  logError?: (err: any) => void;
 }
 
 /**
  * Create a node.js-compatible http handler.
  */
-export function createHandler (app: App, options: Options = {}) {
-  return function (request: IncomingMessage, response: ServerResponse): Promise<void> {
-    let hasResponded = false
+export function createHandler(app: App, options: Options = {}) {
+  return function(
+    request: IncomingMessage,
+    response: ServerResponse
+  ): Promise<void> {
+    let didRespond = false;
 
-    const req = new HttpRequest({
-      connection: {
-        localAddress: request.socket.localAddress,
-        localPort: request.socket.localPort,
-        remoteAddress: request.socket.remoteAddress,
-        remotePort: request.socket.remotePort,
-        encrypted: !!(request.socket as TLSSocket).encrypted
-      },
+    const req = new HttpRequest(request.url || "/", {
       method: request.method,
-      url: request.url || '/',
-      body: createBody(request),
-      headers: createHeaders(request.rawHeaders)
-    })
+      body: request,
+      headers: request.headers,
+      request: request
+    });
 
     const mapError = errorhandler(req, {
       production: options.production,
       log: options.logError
-    })
+    });
 
-    function sendError (err: Error) {
-      return sendResponse(mapError(err))
+    function sendError(err: Error) {
+      return sendResponse(mapError(err));
     }
 
-    function sendResponse (res: Response): void {
-      if (hasResponded) return
+    function sendResponse(res: Response): void {
+      if (didRespond) return;
 
-      hasResponded = true
-      res.started = true
-      req.events.emit('response', res)
+      didRespond = true;
+      req.signal.emit("responseStarted");
 
-      if (res.statusCode) response.statusCode = res.statusCode
-      if (res.statusMessage) response.statusMessage = res.statusMessage
+      if (res.status) response.statusCode = res.status;
+      if (res.statusText) response.statusMessage = res.statusText;
 
-      const headers = res.allHeaders.asObject(false)
+      const headers = res.headers.asObject();
+      const rawBody = useRawBody(res);
 
       for (const key of Object.keys(headers)) {
-        response.setHeader(key, headers[key])
-      }
-
-      const { body } = res
-
-      if (!isNodeBody(body)) {
-        return sendError(new TypeError('HTTP transport only supports node.js bodies'))
+        response.setHeader(key, headers[key]);
       }
 
       Promise.all([
         res.trailer.then(trailer => {
-          if (trailer.rawHeaders.length) response.addTrailers(toTrailers(trailer))
+          response.addTrailers(trailer.asObject());
         }),
-        body.buffered
-          ? body.buffer().then(buffer => { res.finished = true; response.end(buffer) })
-          : Promise.resolve(void pump(body.stream(), response, () => { res.finished = true }))
-      ]).catch(sendError)
+        // Creating a stream is super expensive, use buffered values when possible.
+        rawBody === null
+          ? Promise.resolve(void response.end())
+          : Buffer.isBuffer(rawBody) || typeof rawBody === "string"
+          ? new Promise<undefined>(resolve => {
+              response.write(rawBody);
+              response.end();
+              return resolve();
+            })
+          : new Promise<undefined>((resolve, reject) => {
+              pump(rawBody, response, err => {
+                req.signal.emit("responseEnded");
+                return err ? reject(err) : resolve();
+              });
+            })
+      ]).catch(sendError);
     }
 
-    // Handle request and response errors.
-    req.events.on('error', sendError)
-    req.events.on('abort', () => sendResponse(new Response({ statusCode: 444 })))
+    req.signal.on("abort", () =>
+      sendResponse(new Response(null, { status: 444 }))
+    );
 
-    req.started = true
+    req.signal.emit("requestStarted");
 
-    return Promise.resolve(app(req, finalhandler(req)))
-      .then(
-        (res) => sendResponse(res),
-        (err) => sendError(err)
-      )
-  }
-}
-
-/**
- * Convert the trailers object into a list of trailers for node.js.
- */
-function toTrailers (trailers: Headers): any {
-  const result: [string, string][] = new Array(trailers.rawHeaders.length / 2)
-
-  for (let i = 0; i < trailers.rawHeaders.length; i += 2) {
-    result[i / 2] = [trailers.rawHeaders[i], trailers.rawHeaders[i + 1]]
-  }
-
-  return result
-}
-
-/**
- * Check if body object looks like node.js.
- */
-function isNodeBody (body: any): body is Body {
-  return typeof body.buffer === 'function' && typeof body.stream === 'function'
+    return Promise.resolve(app(req, finalhandler(req))).then(
+      res => sendResponse(res),
+      err => sendError(err)
+    );
+  };
 }
