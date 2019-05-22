@@ -30,7 +30,7 @@ export class HttpRequest extends Request {
 export type App = (
   req: HttpRequest,
   next: () => Promise<Response>
-) => Promise<Response>;
+) => Response | Promise<Response>;
 
 /**
  * HTTP server options.
