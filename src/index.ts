@@ -54,6 +54,7 @@ export function createHandler(app: App, options: Options = {}) {
       method: request.method,
       body: request,
       headers: request.headers,
+      omitDefaultHeaders: true,
       request: request
     });
 
@@ -88,11 +89,16 @@ export function createHandler(app: App, options: Options = {}) {
         }),
         // Creating a stream is super expensive, use buffered values when possible.
         rawBody === null
-          ? Promise.resolve(void response.end())
+          ? new Promise(resolve => {
+              req.signal.emit("responseEnded");
+              response.end();
+              return resolve();
+            })
           : Buffer.isBuffer(rawBody) || typeof rawBody === "string"
           ? new Promise<undefined>(resolve => {
               response.write(rawBody);
               response.end();
+              req.signal.emit("responseEnded");
               return resolve();
             })
           : new Promise<undefined>((resolve, reject) => {
@@ -104,9 +110,7 @@ export function createHandler(app: App, options: Options = {}) {
       ]).catch(sendError);
     }
 
-    req.signal.on("abort", () =>
-      sendResponse(new Response(null, { status: 444 }))
-    );
+    req.signal.on("abort", () => request.destroy());
 
     req.signal.emit("requestStarted");
 
